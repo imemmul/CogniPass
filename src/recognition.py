@@ -2,37 +2,29 @@
 # TODO How to run python file on startup in linux
 
 import boto3
-import base64
-from io import BytesIO
-access_id = ''
-access_key = ''
+import csv
+import pandas as pd
 
-
-def compare_faces():
-    sourceFile='../images/source.jpg'
-    targetFile='../images/target.jpg'
-    client=boto3.client('rekognition', region_name='eu-central-1', aws_access_key_id=access_id, aws_secret_access_key=access_key)
-   
-    # imageSource = base64.decodebytes(base64.b64encode(open(sourceFile,'rb')))
-    # imageTarget = base64.decodebytes(base64.b64encode(open(targetFile,'rb')))
-    with open(sourceFile, 'rb') as image_source:
-        with open(targetFile, 'rb') as image_target:
-            response = client.compare_faces(
+class FaceComparision():
+    
+    def __init__(self, access_key_id, secret_access_key) -> None:
+        self.client = boto3.client('rekognition', region_name='eu-central-1', aws_access_key_id=access_key_id, aws_secret_access_key=secret_access_key)
+    def run(self, source_file, target_file):
+        source_bytes = open(source_file, 'rb')
+        target_bytes = open(target_file, 'rb')
+        # imageSource = base64.decodebytes(base64.b64encode(open(sourceFile,'rb')))
+        # imageTarget = base64.decodebytes(base64.b64encode(open(targetFile,'rb')))
+        response = self.client.compare_faces(
                 SimilarityThreshold=70,
-                SourceImage={'Bytes': image_source.read()},
-                TargetImage={'Bytes': image_target.read()}
-            )
-    print(response)
-    for faceMatch in response['FaceMatches']:
-        position = faceMatch['Face']['BoundingBox']
-        confidence = str(faceMatch['Face']['Confidence'])
-        print('The face at ' +
-               str(position['Left']) + ' ' +
-               str(position['Top']) +
-               ' matches with ' + confidence + '% confidence')
-
-    image_source.close()
-    image_target.close() 
-
-if __name__ == "__main__":
-    compare_faces()
+                SourceImage={'Bytes': source_bytes.read()},
+                TargetImage={'Bytes': target_bytes.read()})    
+        # TODO this will fixed
+        # print(f"number of faces {len(response['FaceMatches'])}")
+        source_bytes.close()
+        target_bytes.close()
+        if len(response['FaceMatches']) > 0:
+            print(f"Given image is valid with validity of {response['FaceMatches'][0]['Face']['Confidence']}")
+            return response['FaceMatches'][0]['Face']['Confidence']
+        else:
+            print(f"No matching face from db")
+            return 0
