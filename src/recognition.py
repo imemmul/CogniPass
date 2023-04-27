@@ -23,8 +23,8 @@ class FaceComparision():
         source_bytes.close()
         target_bytes.close()
         if len(response['FaceMatches']) > 0:
-            print(f"Given image is valid with validity of {response['FaceMatches'][0]['Face']['Confidence']}")
+            print(f"Welcome again, given image is valid with validity of {response['FaceMatches'][0]['Face']['Confidence']}")
             return response['FaceMatches'][0]['Face']['Confidence']
         else:
-            print(f"No matching face from db")
+            print(f"You are not Emir.")
             return 0
