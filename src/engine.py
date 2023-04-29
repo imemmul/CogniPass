@@ -5,6 +5,7 @@ import mediapipe as mp
 import numpy as np
 import time
 import os
+from os import system
 # class Capture():
 #     """
 #     TODO This class need to capture the 4 jpeg file of face with head pose estimation and concat them into one jpeg called target_file. 
@@ -15,7 +16,8 @@ import os
 #         cap = cv2.VideoCapture(0)
 source_folder = "../images/source/"
 target_folder = "../images/target/"
-def save_sources(command):
+# TODO optimize this function with running camera in background and start prefetching images
+def authentication(command):
     mp_face_mesh = mp.solutions.face_mesh
     face_mesh = mp_face_mesh.FaceMesh(min_detection_confidence=0.5, min_tracking_confidence=0.5)
 
@@ -24,7 +26,7 @@ def save_sources(command):
     drawing_spec = mp_drawing.DrawingSpec(thickness=1, circle_radius=1)
 
 
-    cap = cv2.VideoCapture(0)
+    cap = cv2.VideoCapture(1)
     i = 0
     while cap.isOpened():
         success, image = cap.read()
@@ -162,42 +164,55 @@ def save_sources(command):
     cap.release()
 
 
+def delete_aut(folder):
+    for file in os.listdir(folder):
+        if file not in ['source.jpeg']:
+            dir = folder + file
+            os.remove(dir)
+
 def concat_images(command):
     if command == 0:
         folder = source_folder
-        list_2d = [[cv2.imread(folder+os.listdir(folder)[0]), cv2.imread(folder+os.listdir(folder)[1])], [cv2.imread(folder+os.listdir(folder)[2]), cv2.imread(folder+os.listdir(folder)[3])]]
+        sorted_list = sorted(os.listdir(folder))
+        list_2d = [[cv2.imread(folder+sorted_list[0]), cv2.imread(folder+sorted_list[1])], [cv2.imread(folder+sorted_list[2]), cv2.imread(folder+sorted_list[3])]]
         img = cv2.vconcat([cv2.hconcat(list_h) 
                             for list_h in list_2d])
         cv2.imwrite(folder+"source.jpeg", img=img)
+        delete_aut(folder)
     elif command == 1:
         folder = target_folder
-        list_2d = [[cv2.imread(folder+os.listdir(folder)[0]), cv2.imread(folder+os.listdir(folder)[1])], [cv2.imread(folder+os.listdir(folder)[2]), cv2.imread(folder+os.listdir(folder)[3])]]
+        sorted_list = sorted(os.listdir(folder))
+        list_2d = [[cv2.imread(folder+sorted_list[0]), cv2.imread(folder+sorted_list[1])], [cv2.imread(folder+sorted_list[2]), cv2.imread(folder+sorted_list[3])]]
         img = cv2.vconcat([cv2.hconcat(list_h) 
                             for list_h in list_2d])
         cv2.imwrite(folder+"target.jpeg", img=img)
+       
+def check_user(folder):
+    if len(os.listdir(folder)) == 0:
+        print("no user found registering")
+        return False
+    return True
 
+def speak(text):
+    system(f'say {text}')
+    
 if __name__ == "__main__":
     csv_file = "/Users/emirulurak/Desktop/dev/ozu/cs350/cs350_accessKeys.csv"
-    # concat_images()
-    run = True
-    while run:
-        command = input("Sign in or Sign up: ")
-        if command == "r":
-            print(f"Please show your face to register")
-            save_sources(command=0)
-            print("Signed up")
-        elif command == "l":
-            print(f"loggin in show your face")
-            save_sources(command=1)
-            with open(csv_file, 'r') as input:
-                reader = csv.reader(input)
-                next(input)
-                for line in reader:
-                    access_key_id = line[0]
-                    secret_access_key = line[1]
-            fc = FaceComparision(access_key_id=access_key_id, secret_access_key=secret_access_key)
-            source_file = "../images/source/source.jpeg"
-            target_file = "../images/target/target.jpeg"
-            fc.run(source_file=source_file, target_file=target_file)
-            run = False
-            break
+    if not check_user(source_folder):
+        authentication(command=0)
+    else:
+        authentication(command=1)
+        with open(csv_file, 'r') as input:
+            reader = csv.reader(input)
+            next(input)
+            for line in reader:
+                access_key_id = line[0]
+                secret_access_key = line[1]
+        fc = FaceComparision(access_key_id=access_key_id, secret_access_key=secret_access_key)
+        source_file = source_folder + "source.jpeg"
+        target_file = target_folder + "target.jpeg"
+        if (fc.run(source_file=source_file, target_file=target_file)) > 50:
+            system('say Logged in, Hello Emir')
+        else :
+            system('say please stay away from this computer')
+        delete_aut(target_folder)
