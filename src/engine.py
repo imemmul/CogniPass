@@ -17,42 +17,31 @@ from os import system
 source_folder = "../images/source/"
 target_folder = "../images/target/"
 # TODO optimize this function with running camera in background and start prefetching images
-def authentication(command):
-    mp_face_mesh = mp.solutions.face_mesh
-    face_mesh = mp_face_mesh.FaceMesh(min_detection_confidence=0.5, min_tracking_confidence=0.5)
-
-    mp_drawing = mp.solutions.drawing_utils
-
-    drawing_spec = mp_drawing.DrawingSpec(thickness=1, circle_radius=1)
-
-
-    cap = cv2.VideoCapture(1)
-    i = 0
-    while cap.isOpened():
-        success, image = cap.read()
-        time.sleep(0.2)
-        start = time.time()
-
-        # Flip the image horizontally for a later selfie-view display
-        # Also convert the color space from BGR to RGB
-        image = cv2.cvtColor(cv2.flip(image, 1), cv2.COLOR_BGR2RGB)
-
-        # To improve performance
-        image.flags.writeable = False
-        
-        # Get the result
-        results = face_mesh.process(image)
-        
-        # To improve performance
-        image.flags.writeable = True
-        
-        # Convert the color space from RGB to BGR
-        image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-
-        img_h, img_w, img_c = image.shape
+class FaceTracker():
+    def __init__(self) -> None:
+        mp_face_mesh = mp.solutions.face_mesh
+        self.mesh = mp_face_mesh.FaceMesh(min_detection_confidence=0.5, min_tracking_confidence=0.5)
+        self.mp_drawing = mp.solutions.drawing_utils
+        self.drawing_spec = self.mp_drawing.DrawingSpec(thickness=1, circle_radius=1)
+        try:
+            self.cap = cv2.VideoCapture(1)
+        except:
+            self.cap = cv2.VideoCapture(1)
+        self.counter = 0
+    def run(self, command):
+        self.counter = 0
+        while self.cap.isOpened():
+            _, image = self.cap.read()
+            time.sleep(0.2)
+            image = cv2.cvtColor(cv2.flip(image, 1), cv2.COLOR_BGR2RGB)
+            image.flags.writeable = False
+            results = self.mesh.process(image)
+            image.flags.writeable = True
+            image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+            img_h, img_w, img_c = image.shape
         face_3d = []
         face_2d = []
-
+        print("I am in cam")
         if results.multi_face_landmarks:
             for face_landmarks in results.multi_face_landmarks:
                 for idx, lm in enumerate(face_landmarks.landmark):
@@ -100,34 +89,29 @@ def authentication(command):
                 z = angles[2] * 360
                 if command == 0:
                     folder = source_folder
-                    print(f"i in source {i}")
-                    if i == 4:
+                    print(f"i in source {self.counter}")
+                    if self.counter == 4:
                         concat_images(command=0)
-                        cap.release()
+                        self.cap.release()
                         break
                 elif command == 1:
                     folder = target_folder
-                    print(f"i in target {i}")
-                    if i == 4:
+                    if self.counter == 4:
                         concat_images(command=1)
-                        cap.release()
+                        self.cap.release()
                         break
                 # See where the user's head tilting
                 if y < -10:
-                    text = "Looking Left"
-                    # cv2.imwrite(filename=folder+"left.jpeg", img=image)
+                    pass
                 elif y > 10:
-                    text = "Looking Right"
-                    # cv2.imwrite(filename=folder+"right.jpeg", img=image)
+                    pass
                 elif x < -10:
-                    text = "Looking Down"
+                    pass
                 elif x > 10:
-                    # cv2.imwrite(filename=folder+"up.jpeg", img=image)
-                    text = "Looking Up"
+                    pass
                 else:
-                    cv2.imwrite(filename=f"{folder}forward_{i}.jpeg", img=image)
-                    i+= 1
-                    text = "Forward"
+                    cv2.imwrite(filename=f"{folder}forward_{self.counter}.jpeg", img=image)
+                    self.counter+= 1
                 
                 # Display the nose direction
                 nose_3d_projection, jacobian = cv2.projectPoints(nose_3d, rot_vec, trans_vec, cam_matrix, dist_matrix)
@@ -138,37 +122,29 @@ def authentication(command):
                 cv2.line(image, p1, p2, (255, 0, 0), 3)
 
                 # Add the text on the image
-                cv2.putText(image, text, (20, 50), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 255, 0), 2)
-                cv2.putText(image, "x: " + str(np.round(x,2)), (500, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
-                cv2.putText(image, "y: " + str(np.round(y,2)), (500, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
-                cv2.putText(image, "z: " + str(np.round(z,2)), (500, 150), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
 
 
-            end = time.time()
-            totalTime = end - start
-
-            fps = 1 / totalTime
-            #print("FPS: ", fps)
-
-            cv2.putText(image, f'FPS: {int(fps)}', (20,450), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0,255,0), 2)
-
-            mp_drawing.draw_landmarks(
+            self.mp_drawing.draw_landmarks(
                         image=image,
                         landmark_list=face_landmarks,
-                        connections=mp_face_mesh.FACEMESH_TESSELATION,
-                        landmark_drawing_spec=drawing_spec,
-                        connection_drawing_spec=drawing_spec)
+                        connections=self.mesh.FACEMESH_TESSELATION,
+                        landmark_drawing_spec=self.drawing_spec,
+                        connection_drawing_spec=self.drawing_spec)
 
 
-        # cv2.imshow('Head Pose Estimation', image)
-    cap.release()
+class HandTracker():
+    def __init__(self) -> None:
+        pass
+
+def authentication(command):
+   face_tracker = FaceTracker()
+   face_tracker.run(command)
 
 
 def delete_aut(folder):
     for file in os.listdir(folder):
-        if file not in ['source.jpeg']:
-            dir = folder + file
-            os.remove(dir)
+        dir = folder + file
+        os.remove(dir)
 
 def concat_images(command):
     if command == 0:
@@ -178,6 +154,7 @@ def concat_images(command):
         img = cv2.vconcat([cv2.hconcat(list_h) 
                             for list_h in list_2d])
         cv2.imwrite(folder+"source.jpeg", img=img)
+        fc.upload_file(folder+"source.jpeg")
         delete_aut(folder)
     elif command == 1:
         folder = target_folder
@@ -186,6 +163,8 @@ def concat_images(command):
         img = cv2.vconcat([cv2.hconcat(list_h) 
                             for list_h in list_2d])
         cv2.imwrite(folder+"target.jpeg", img=img)
+        fc.upload_file(folder+"target.jpeg")
+        delete_aut(folder)
        
 def check_user(folder):
     if len(os.listdir(folder)) == 0:
@@ -195,24 +174,37 @@ def check_user(folder):
 
 def speak(text):
     system(f'say {text}')
-    
-if __name__ == "__main__":
-    csv_file = "/Users/emirulurak/Desktop/dev/ozu/cs350/cs350_accessKeys.csv"
-    if not check_user(source_folder):
-        authentication(command=0)
-    else:
-        authentication(command=1)
-        with open(csv_file, 'r') as input:
+
+def load_csv(csv_file):
+    with open(csv_file, 'r') as input:
             reader = csv.reader(input)
             next(input)
             for line in reader:
                 access_key_id = line[0]
                 secret_access_key = line[1]
-        fc = FaceComparision(access_key_id=access_key_id, secret_access_key=secret_access_key)
-        source_file = source_folder + "source.jpeg"
-        target_file = target_folder + "target.jpeg"
-        if (fc.run(source_file=source_file, target_file=target_file)) > 50:
-            system('say Logged in, Hello Emir')
-        else :
-            system('say please stay away from this computer')
-        delete_aut(target_folder)
+    return access_key_id, secret_access_key
+
+from test import test_register
+if __name__ == "__main__":
+    csv_file = "/Users/emirulurak/Desktop/dev/ozu/cs350/cs350_accessKeys.csv"
+    id, secret = load_csv(csv_file)
+    source_file = source_folder + "source.jpeg"
+    target_file = target_folder + "target.jpeg"
+    fc = FaceComparision(access_key_id=id, secret_access_key=secret)
+    while True:
+        time.sleep(2)
+        print("In loop")
+        if not fc.get_len_db() > 0:
+            speak("I am registering you please wait.")
+            authentication(0)
+        else:
+            speak("I am logging in please wait.")
+            authentication(1)
+            source_img = fc.get_file('source.jpeg')
+            target_img = fc.get_file('target.jpeg')
+            if fc.log_in(source_img, target_img):
+                speak("Hello Emir")
+            else:
+                speak("Please get away from this computer.")
+        
+    # test_register(fc)
