@@ -19,117 +19,107 @@ target_folder = "../images/target/"
 # TODO optimize this function with running camera in background and start prefetching images
 class FaceTracker():
     def __init__(self) -> None:
-        mp_face_mesh = mp.solutions.face_mesh
-        self.mesh = mp_face_mesh.FaceMesh(min_detection_confidence=0.5, min_tracking_confidence=0.5)
-        self.mp_drawing = mp.solutions.drawing_utils
-        self.drawing_spec = self.mp_drawing.DrawingSpec(thickness=1, circle_radius=1)
-        try:
-            self.cap = cv2.VideoCapture(1)
-        except:
-            self.cap = cv2.VideoCapture(1)
-        self.counter = 0
+        pass
     def run(self, command):
-        self.counter = 0
-        while self.cap.isOpened():
-            _, image = self.cap.read()
-            time.sleep(0.2)
+        mp_face_mesh = mp.solutions.face_mesh
+        face_mesh = mp_face_mesh.FaceMesh(min_detection_confidence=0.5, min_tracking_confidence=0.5)
+        cap = cv2.VideoCapture(0)
+        counter = 0
+        while cap.isOpened():
+            success, image = cap.read()
+
+            # Flip the image horizontally for a later selfie-view display
+            # Also convert the color space from BGR to RGB
             image = cv2.cvtColor(cv2.flip(image, 1), cv2.COLOR_BGR2RGB)
+
+            # To improve performance
             image.flags.writeable = False
-            results = self.mesh.process(image)
+            
+            # Get the result
+            results = face_mesh.process(image)
+            
+            # To improve performance
             image.flags.writeable = True
+            
+            # Convert the color space from RGB to BGR
             image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+
             img_h, img_w, img_c = image.shape
-        face_3d = []
-        face_2d = []
-        print("I am in cam")
-        if results.multi_face_landmarks:
-            for face_landmarks in results.multi_face_landmarks:
-                for idx, lm in enumerate(face_landmarks.landmark):
-                    if idx == 33 or idx == 263 or idx == 1 or idx == 61 or idx == 291 or idx == 199:
-                        if idx == 1:
-                            nose_2d = (lm.x * img_w, lm.y * img_h)
-                            nose_3d = (lm.x * img_w, lm.y * img_h, lm.z * 3000)
+            face_3d = []
+            face_2d = []
 
-                        x, y = int(lm.x * img_w), int(lm.y * img_h)
+            if results.multi_face_landmarks:
+                for face_landmarks in results.multi_face_landmarks:
+                    for idx, lm in enumerate(face_landmarks.landmark):
+                        if idx == 33 or idx == 263 or idx == 1 or idx == 61 or idx == 291 or idx == 199:
+                            if idx == 1:
+                                nose_2d = (lm.x * img_w, lm.y * img_h)
+                                nose_3d = (lm.x * img_w, lm.y * img_h, lm.z * 8000)
 
-                        # Get the 2D Coordinates
-                        face_2d.append([x, y])
+                            x, y = int(lm.x * img_w), int(lm.y * img_h)
 
-                        # Get the 3D Coordinates
-                        face_3d.append([x, y, lm.z])       
-                
-                # Convert it to the NumPy array
-                face_2d = np.array(face_2d, dtype=np.float64)
+                            # Get the 2D Coordinates
+                            face_2d.append([x, y])
 
-                # Convert it to the NumPy array
-                face_3d = np.array(face_3d, dtype=np.float64)
+                            # Get the 3D Coordinates
+                            face_3d.append([x, y, lm.z])       
+                    
+                    # Convert it to the NumPy array
+                    face_2d = np.array(face_2d, dtype=np.float64)
 
-                # The camera matrix
-                focal_length = 1 * img_w
+                    # Convert it to the NumPy array
+                    face_3d = np.array(face_3d, dtype=np.float64)
 
-                cam_matrix = np.array([ [focal_length, 0, img_h / 2],
-                                        [0, focal_length, img_w / 2],
-                                        [0, 0, 1]])
+                    # The camera matrix
+                    focal_length = 1 * img_w
 
-                # The distortion parameters
-                dist_matrix = np.zeros((4, 1), dtype=np.float64)
+                    cam_matrix = np.array([ [focal_length, 0, img_h / 2],
+                                            [0, focal_length, img_w / 2],
+                                            [0, 0, 1]])
 
-                # Solve PnP
-                success, rot_vec, trans_vec = cv2.solvePnP(face_3d, face_2d, cam_matrix, dist_matrix)
+                    # The Distance Matrix
+                    dist_matrix = np.zeros((4, 1), dtype=np.float64)
 
-                # Get rotational matrix
-                rmat, jac = cv2.Rodrigues(rot_vec)
+                    # Solve PnP
+                    success, rot_vec, trans_vec = cv2.solvePnP(face_3d, face_2d, cam_matrix, dist_matrix)
 
-                # Get angles
-                angles, mtxR, mtxQ, Qx, Qy, Qz = cv2.RQDecomp3x3(rmat)
+                    # Get rotational matrix
+                    rmat, jac = cv2.Rodrigues(rot_vec)
 
-                # Get the y rotation degree
-                x = angles[0] * 360
-                y = angles[1] * 360
-                z = angles[2] * 360
-                if command == 0:
-                    folder = source_folder
-                    print(f"i in source {self.counter}")
-                    if self.counter == 4:
-                        concat_images(command=0)
-                        self.cap.release()
-                        break
-                elif command == 1:
-                    folder = target_folder
-                    if self.counter == 4:
-                        concat_images(command=1)
-                        self.cap.release()
-                        break
-                # See where the user's head tilting
-                if y < -10:
-                    pass
-                elif y > 10:
-                    pass
-                elif x < -10:
-                    pass
-                elif x > 10:
-                    pass
-                else:
-                    cv2.imwrite(filename=f"{folder}forward_{self.counter}.jpeg", img=image)
-                    self.counter+= 1
-                
-                # Display the nose direction
-                nose_3d_projection, jacobian = cv2.projectPoints(nose_3d, rot_vec, trans_vec, cam_matrix, dist_matrix)
+                    # Get angles
+                    angles, mtxR, mtxQ, Qx, Qy, Qz = cv2.RQDecomp3x3(rmat)
 
-                p1 = (int(nose_2d[0]), int(nose_2d[1]))
-                p2 = (int(nose_2d[0] + y * 10) , int(nose_2d[1] - x * 10))
-                
-                cv2.line(image, p1, p2, (255, 0, 0), 3)
+                    # Get the y rotation degree
+                    x = angles[0] * 360
+                    y = angles[1] * 360
 
-                # Add the text on the image
+                    if command == 0:
+                        folder = source_folder
+                        print(f"i in source {counter}")
+                        if counter == 4:
+                            concat_images(command=0)
+                            cap.release()
+                            break
+                    elif command == 1:
+                        folder = target_folder
+                        if counter == 4:
+                            concat_images(command=1)
+                            cap.release()
+                            break
+                    # See where the user's head tilting
+                    if y < -10:
+                        pass
+                    elif y > 10:
+                        pass
+                    elif x < -10:
+                        pass
+                    elif x > 10:
+                        pass
+                    else:
+                        cv2.imwrite(filename=f"{folder}forward_{counter}.jpeg", img=image)
+                        counter+= 1
 
-
-            self.mp_drawing.draw_landmarks(
-                        image=image,
-                        landmark_list=face_landmarks,
-                        connections=self.mesh.FACEMESH_TESSELATION,
-                        landmark_drawing_spec=self.drawing_spec,
-                        connection_drawing_spec=self.drawing_spec)
+        cap.release()
 
 
 class HandTracker():
@@ -154,7 +144,7 @@ def concat_images(command):
         img = cv2.vconcat([cv2.hconcat(list_h) 
                             for list_h in list_2d])
         cv2.imwrite(folder+"source.jpeg", img=img)
-        fc.upload_file(folder+"source.jpeg")
+        fc.upload_file(folder+"source.jpeg", "source.jpeg")
         delete_aut(folder)
     elif command == 1:
         folder = target_folder
@@ -163,10 +153,11 @@ def concat_images(command):
         img = cv2.vconcat([cv2.hconcat(list_h) 
                             for list_h in list_2d])
         cv2.imwrite(folder+"target.jpeg", img=img)
-        fc.upload_file(folder+"target.jpeg")
+        fc.upload_file(folder+"target.jpeg", "target.jpeg")
         delete_aut(folder)
        
 def check_user(folder):
+    # for local storage
     if len(os.listdir(folder)) == 0:
         print("no user found registering")
         return False
@@ -184,7 +175,6 @@ def load_csv(csv_file):
                 secret_access_key = line[1]
     return access_key_id, secret_access_key
 
-from test import test_register
 if __name__ == "__main__":
     csv_file = "/Users/emirulurak/Desktop/dev/ozu/cs350/cs350_accessKeys.csv"
     id, secret = load_csv(csv_file)

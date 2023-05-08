@@ -21,17 +21,17 @@ class FaceComparision():
         # imageTarget = base64.decodebytes(base64.b64encode(open(targetFile,'rb')))
         response = self.client.compare_faces(
                 SimilarityThreshold=70,
-                SourceImage={'Bytes': source_bytes.read()},
-                TargetImage={'Bytes': target_bytes.read()})    
+                SourceImage={'Bytes': source_bytes},
+                TargetImage={'Bytes': target_bytes})    
         # TODO this will fixed
         # print(f"number of faces {len(response['FaceMatches'])}")
-        source_bytes.close()
-        target_bytes.close()
         if len(response['FaceMatches']) > 0:
             print(f"Welcome again, given image is valid with validity of {response['FaceMatches'][0]['Face']['Confidence']}")
+            self.delete_file('target.jpeg')
             return response['FaceMatches'][0]['Face']['Confidence']
         else:
             print(f"You are not Emir.")
+            self.delete_file('target.jpeg')
             return 0
     def upload_file(self, file, file_name):
         self.bucket_client.upload_file(file, 'myawsdatabase', file_name)
