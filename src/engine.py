@@ -5,7 +5,7 @@ import mediapipe as mp
 import numpy as np
 import time
 import os
-from os import system
+import subprocess
 # class Capture():
 #     """
 #     TODO This class need to capture the 4 jpeg file of face with head pose estimation and concat them into one jpeg called target_file. 
@@ -164,7 +164,7 @@ def check_user(folder):
     return True
 
 def speak(text):
-    system(f'say {text}')
+    subprocess.call(['espeak', text])
 
 def load_csv(csv_file):
     with open(csv_file, 'r') as input:
@@ -176,12 +176,13 @@ def load_csv(csv_file):
     return access_key_id, secret_access_key
 
 if __name__ == "__main__":
-    csv_file = "/Users/emirulurak/Desktop/dev/ozu/cs350/cs350_accessKeys.csv"
+    csv_file = "/home/emir/Desktop/dev/authentication/cs350_accessKeys.csv"
     id, secret = load_csv(csv_file)
     source_file = source_folder + "source.jpeg"
     target_file = target_folder + "target.jpeg"
     fc = FaceComparision(access_key_id=id, secret_access_key=secret)
-    while True:
+    count_running = 0
+    while count_running < 5:
         time.sleep(2)
         print("In loop")
         if not fc.get_len_db() > 0:
@@ -196,5 +197,6 @@ if __name__ == "__main__":
                 speak("Hello Emir")
             else:
                 speak("Please get away from this computer.")
+        count_running += 1
         
     # test_register(fc)
