@@ -175,6 +175,7 @@ def load_csv(csv_file):
                 secret_access_key = line[1]
     return access_key_id, secret_access_key
 
+import sys
 if __name__ == "__main__":
     csv_file = "/home/emir/Desktop/dev/authentication/cs350_accessKeys.csv"
     id, secret = load_csv(csv_file)
@@ -182,21 +183,20 @@ if __name__ == "__main__":
     target_file = target_folder + "target.jpeg"
     fc = FaceComparision(access_key_id=id, secret_access_key=secret)
     count_running = 0
-    while count_running < 5:
-        time.sleep(2)
-        print("In loop")
-        if not fc.get_len_db() > 0:
-            speak("I am registering you please wait.")
-            authentication(0)
+    time.sleep(2)
+    print("In loop")
+    if not fc.get_len_db() > 0:
+        speak("I am registering you please wait.")
+        authentication(0)
+    else:
+        speak("I am logging in please wait.")
+        authentication(1)
+        source_img = fc.get_file('source.jpeg')
+        target_img = fc.get_file('target.jpeg')
+        if fc.log_in(source_img, target_img):
+            sys.exit(0)
         else:
-            speak("I am logging in please wait.")
-            authentication(1)
-            source_img = fc.get_file('source.jpeg')
-            target_img = fc.get_file('target.jpeg')
-            if fc.log_in(source_img, target_img):
-                speak("Hello Emir")
-            else:
-                speak("Please get away from this computer.")
-        count_running += 1
+            speak("Please get away from this computer.")
+            sys.exit(-1)
         
     # test_register(fc)
