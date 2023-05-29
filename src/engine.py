@@ -1,3 +1,5 @@
+#!/usr/bin/python3.9
+
 from recognition import FaceComparision
 import csv
 import cv2
@@ -5,7 +7,29 @@ import mediapipe as mp
 import numpy as np
 import time
 import os
+import sys
+import logging
 import subprocess
+
+def load_csv(csv_file):
+    with open(csv_file, 'r') as input:
+            reader = csv.reader(input)
+            next(input)
+            for line in reader:
+                access_key_id = line[0]
+                secret_access_key = line[1]
+    return access_key_id, secret_access_key
+
+target_folder = "/home/emir/Desktop/dev/CogniPass/images/target/"
+source_folder = "/home/emir/Desktop/dev/CogniPass/images/source/"
+csv_file = "/home/emir/Desktop/dev/authentication/cs350_accessKeys.csv"
+id, secret = load_csv(csv_file)
+source_file = source_folder + "source.jpeg"
+target_file = target_folder + "target.jpeg"
+fc = FaceComparision(access_key_id=id, secret_access_key=secret)
+
+
+
 # class Capture():
 #     """
 #     TODO This class need to capture the 4 jpeg file of face with head pose estimation and concat them into one jpeg called target_file. 
@@ -14,8 +38,7 @@ import subprocess
 #         mp_face_mesh = mp.solutions.face_mesh
 #         face_mesh = mp_face_mesh.FaceMesh(min_detection_confidence=0.5, min_tracking_confidence=0.5)
 #         cap = cv2.VideoCapture(0)
-source_folder = "../images/source/"
-target_folder = "../images/target/"
+# FIXME below directories should be absolute path
 # TODO optimize this function with running camera in background and start prefetching images
 class FaceTracker():
     def __init__(self) -> None:
@@ -166,22 +189,7 @@ def check_user(folder):
 def speak(text):
     subprocess.call(['espeak', text])
 
-def load_csv(csv_file):
-    with open(csv_file, 'r') as input:
-            reader = csv.reader(input)
-            next(input)
-            for line in reader:
-                access_key_id = line[0]
-                secret_access_key = line[1]
-    return access_key_id, secret_access_key
-
-import sys
-if __name__ == "__main__":
-    csv_file = "/home/emir/Desktop/dev/authentication/cs350_accessKeys.csv"
-    id, secret = load_csv(csv_file)
-    source_file = source_folder + "source.jpeg"
-    target_file = target_folder + "target.jpeg"
-    fc = FaceComparision(access_key_id=id, secret_access_key=secret)
+def run():
     count_running = 0
     time.sleep(2)
     print("In loop")
@@ -194,9 +202,12 @@ if __name__ == "__main__":
         source_img = fc.get_file('source.jpeg')
         target_img = fc.get_file('target.jpeg')
         if fc.log_in(source_img, target_img):
-            sys.exit(0)
+            speak("Hello, Emir")
+            logging.basicConfig(filename='/home/emir/Desktop/dev/CogniPass/scripts/logfile.log', level=logging.DEBUG)
+            logging.debug('Script executed successfully.')
+            return True
         else:
             speak("Please get away from this computer.")
-            sys.exit(-1)
-        
-    # test_register(fc)
+            logging.basicConfig(filename='/home/emir/Desktop/dev/CogniPass/scripts/logfile.log', level=logging.DEBUG)
+            logging.debug('Script executed successfully.')
+            return False
