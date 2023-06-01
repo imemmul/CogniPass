@@ -11,7 +11,10 @@ import sys
 import logging
 import subprocess
 
-RUNNING = False
+SCREEN_LOCK_TIMEOUT = 60
+PRESENCE_CHECK_INTERVAL = 5 
+
+print(f"Env {os.environ}")
 
 def load_csv(csv_file):
     with open(csv_file, 'r') as input:
@@ -31,15 +34,6 @@ target_file = target_folder + "target.jpeg"
 fc = FaceComparision(access_key_id=id, secret_access_key=secret)
 
 
-
-# class Capture():
-#     """
-#     TODO This class need to capture the 4 jpeg file of face with head pose estimation and concat them into one jpeg called target_file. 
-#     """
-#     def __init__(self) -> None:
-#         mp_face_mesh = mp.solutions.face_mesh
-#         face_mesh = mp_face_mesh.FaceMesh(min_detection_confidence=0.5, min_tracking_confidence=0.5)
-#         cap = cv2.VideoCapture(0)
 # FIXME below directories should be absolute path
 # TODO optimize this function with running camera in background and start prefetching images
 class FaceTracker():
@@ -186,40 +180,75 @@ def check_user(folder):
 def speak(text):
     subprocess.call(['espeak', text])
 
-def register_user():
-    speak("I am registering you please wait.")
+def register_user(silent):
+    if not silent:
+        speak("I am registering you please wait.")
     authentication(0)
 
-def login_user():
-    speak("I am logging in please wait.")
+def login_user(silent):
+    if not silent:
+        speak("I am logging in please wait.")
     authentication(1)
     
-def run_facial():
+def run_facial(silent):
     if not fc.get_len_db() > 0:
-        register_user()
+        register_user(silent)
         time.sleep(1)
-        login_user
+        login_user(silent)
     else:
-        login_user()
+        login_user(silent)
         source_img = fc.get_file('source.jpeg')
         target_img = fc.get_file('target.jpeg')
         if fc.log_in(source_img, target_img):
-            speak("Hello, Emir")
+            if not silent:
+                speak("Hello, Emir")
             logging.basicConfig(filename='/home/emir/Desktop/dev/CogniPass/scripts/logfile.log', level=logging.DEBUG)
             logging.debug('Script executed successfully.')
             return True
         else:
-            speak("Please get away from this computer.")
+            if not silent:
+                speak("Please get away from this computer.")
             logging.basicConfig(filename='/home/emir/Desktop/dev/CogniPass/scripts/logfile.log', level=logging.DEBUG)
             logging.debug('Script executed successfully.')
             return False
 
-
-def run_background_admin():
+def check_presence():
+    mp_face_mesh = mp.solutions.face_mesh
+    face_mesh = mp_face_mesh.FaceMesh(min_detection_confidence=0.5, min_tracking_confidence=0.5)
+    cap = cv2.VideoCapture(0)
+    last_presence_time = time.time()
+    locked = False
     while True:
-        time.sleep(30)
-        if run_facial():
-            pass
-        else:
-            subprocess.run(['xdg-screensaver', 'lock'])
-            speak("Sorry, I don't know you so can you write the password ?")
+        ret, frame = cap.read()
+        
+        if not ret:
+            break
+        
+        frame = cv2.flip(frame, 1)
+        
+        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+        face = face_mesh.process(frame_rgb)
+        
+        if face.multi_face_landmarks: # face detected
+            last_presence_time = time.time()
+            # TODO UNLOCK
+            if locked:
+                locked = False
+        
+        if time.time() - last_presence_time > PRESENCE_CHECK_INTERVAL and not locked:
+            speak("I am locking the machine.")
+            time.sleep(1)
+            cmd = subprocess.run(["/usr/bin/xdg-screensaver", "lock"], capture_output=True, text=True)
+            time.sleep(1)
+            if cmd.returncode == 0:
+                logging.basicConfig(filename='/home/emir/Desktop/dev/CogniPass/scripts/logfile.log', level=logging.DEBUG)
+                logging.debug('Script executed successfully.')
+                locked = True
+            else:
+                logging.basicConfig(filename='/home/emir/Desktop/dev/CogniPass/scripts/logfile.log', level=logging.DEBUG)
+                logging.debug(f'Script executed usuccessfully.')
+                locked = False
+
+    cap.release()
+    cv2.destroyAllWindows()
