@@ -1,30 +1,28 @@
 #!/usr/bin/python3.9
 
 import pam
-from engine import run_facial, speak
+from engine import run_facial, speak, run_background_admin
 import subprocess
 import time
 
-login = False
+facial_result = run_facial()
+time.sleep(1)
 
-def shutdown_machine():
+def shutdown_machine(countdown):
+    speak(f"I am turning of the machine in {countdown} seconds.")
+    for _ in range(countdown, 0, -1):
+        speak(str(_))
+        time.sleep(1)
     subprocess.run(['sudo', 'shutdown', '-h', 'now'])
 
-facial_result = run_facial()
 if facial_result:
     print(f"Auth successful") # this is reached
-    login = pam.authenticate("emir", "422453", service='login')
-    if login:
-        speak("Hand Tracking processes is starting..")
-    else:
-        speak("Something Failed")
+    speak("Background Detection has been started.")
+    run_background_admin()
     
 else:
-    speak("I am turning of the machine in 5 seconds.")
-    for _ in range(5, 0, -1):
-        speak(str(_))
+    shutdown_machine(5)
     speak("Bye")
-    shutdown_machine()
 
 
 

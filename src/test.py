@@ -12,7 +12,6 @@ import time
 #     cv2.imwrite(folder+"target_1.jpeg", img=img)
 import cv2 
 import mediapipe as mp
-from engine import run_hand
 
 
 def test_cv():
@@ -56,7 +55,7 @@ def test_register(fc:FaceComparision):
         speak("Please get away from this computer or I am calling Emir.")
 
 def test_hand():
-    run_hand()
+    pass
 
 
 if __name__ == "__main__":

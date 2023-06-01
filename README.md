@@ -1,5 +1,4 @@
 # CogniPass
 Intelligent Linux application empowered with deep learning for CS350
 
-#!/bin/bash
-python3.9 /home/emir/Desktop/dev/CogniPass/src/engine.py
+To run CogniPass all you need to do is git clone the repo and install the service in ./scripts/ and fix absolute paths in the src files. 
