@@ -11,7 +11,10 @@ import time
 #                         for list_h in list_2d])
 #     cv2.imwrite(folder+"target_1.jpeg", img=img)
 import cv2 
-import mediapipe as mp 
+import mediapipe as mp
+from engine import run_hand
+
+
 def test_cv():
     cap = cv2.VideoCapture(0)
 
@@ -52,5 +55,9 @@ def test_register(fc:FaceComparision):
     else:
         speak("Please get away from this computer or I am calling Emir.")
 
-def test_login():
-    pass
+def test_hand():
+    run_hand()
+
+
+if __name__ == "__main__":
+    test_hand()

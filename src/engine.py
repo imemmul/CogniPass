@@ -10,6 +10,8 @@ import os
 import sys
 import logging
 import subprocess
+import pyautogui
+pyautogui.FAILSAFE = False
 
 def load_csv(csv_file):
     with open(csv_file, 'r') as input:
@@ -144,11 +146,6 @@ class FaceTracker():
 
         cap.release()
 
-
-class HandTracker():
-    def __init__(self) -> None:
-        pass
-
 def authentication(command):
    face_tracker = FaceTracker()
    face_tracker.run(command)
@@ -189,7 +186,7 @@ def check_user(folder):
 def speak(text):
     subprocess.call(['espeak', text])
 
-def run():
+def run_facial():
     count_running = 0
     time.sleep(2)
     print("In loop")
@@ -211,3 +208,67 @@ def run():
             logging.basicConfig(filename='/home/emir/Desktop/dev/CogniPass/scripts/logfile.log', level=logging.DEBUG)
             logging.debug('Script executed successfully.')
             return False
+
+def run_hand():
+    cap = cv2.VideoCapture(0)   # capture video '0' one cam
+    # width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    # hiegh = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    hand_detector = mp.solutions.hands.Hands()  # detect hand
+    screen_width, screen_height = pyautogui.size()
+    index_y = 0
+
+    '''Smoothen the movement of mouse to stop at the exact position of,
+    our hand movement without any shake in the movement of the mouse'''
+    smoothening = 6
+    plocx, plocy = 0, 0
+    clocx, clocy = 0, 0 
+
+    while True:
+        _, frame = cap.read()   # read data from cap
+        '''Flip the frame or screen since the camera shows the mirror image,
+        of our hand and moves in opposite direction so we need to flip the screen'''
+        frame = cv2.flip(frame, 1)
+        # shape gives frame height and width using shape 
+        frame_height, frame_width = screen_height, screen_width
+        # rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)  # detect on rgb frame color
+        output = hand_detector.process(frame)
+        hands = output.multi_hand_landmarks # hand landmark
+        
+        if hands:
+            for hand in hands:
+                
+                landmarks = hand.landmark
+                
+                for id, landmark in enumerate(landmarks):   # add counter
+                    # show the landmarks on kernel in x and y axis
+                    # x and y axis is multiplies by the height and width to get the x and y axis on the frames
+                    x = int(landmark.x*frame_width)
+                    y = int(landmark.y*frame_height)
+                    # print(x,y)
+                    # Index finger tip point number is 8
+                    # and draw a boundary to the point a circle
+                    if id == 8:
+                        cv2.circle(img=frame, center=(x,y), radius=15, color=(0, 255, 255))
+                        # pyautogui.moveTo(x,y)
+                        index_x = (screen_width/frame_width)*x
+                        index_y = (screen_height/frame_height)*y
+                        # co-ordinates need to be changed 
+                        # smoothining varies with the change in the smoothening factor
+                        clocx = plocx + (index_x - plocx) /smoothening
+                        clocy = plocy + (index_y - plocy) /smoothening
+                        pyautogui.moveTo(clocx, clocy)
+                        plocx, plocy = clocx, clocy
+                    
+                    # thumb tip point number is 4
+
+                    if id == 4:
+                        cv2.circle(img=frame, center=(x,y), radius=15, color=(0, 255, 255))
+                        thumb_x = (screen_width/frame_width)*x
+                        thumb_y = (screen_height/frame_height)*y
+                        print('distance : ', abs(index_y - thumb_y))
+                        if abs(index_y - thumb_y) < 70:
+                            print('click')
+                            pyautogui.click()
+                            pyautogui.sleep(1)
+        # cv2.imshow('Virtual Mouse', frame)  # show image
+        cv2.waitKey(1)  # waits for key infinitely
