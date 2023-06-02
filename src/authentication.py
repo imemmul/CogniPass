@@ -7,6 +7,8 @@ import time
 import os
 import threading
 
+os.environ['DISPLAY'] = ':0'
+
 facial_result = run_facial(silent=True)
 
 

@@ -7,14 +7,17 @@ import mediapipe as mp
 import numpy as np
 import time
 import os
-import sys
+import pam
 import logging
 import subprocess
+import dbus
 
 SCREEN_LOCK_TIMEOUT = 60
 PRESENCE_CHECK_INTERVAL = 5 
 
-print(f"Env {os.environ}")
+os.environ['DISPLAY'] = ':0'
+
+# print(f"Env {os.environ}")
 
 def load_csv(csv_file):
     with open(csv_file, 'r') as input:
@@ -212,6 +215,29 @@ def run_facial(silent):
             logging.debug('Script executed successfully.')
             return False
 
+def unlock_screen():
+    # Create a PAM instance
+    # FIXME doesnot unlocks
+    p = pam.pam()
+
+    # Authenticate the user
+    authenticated = p.authenticate("emir", "422453")
+
+    if authenticated:
+        print("User authenticated successfully.")
+        # Unlock the screen by changing the PAM session
+        session_opened = p.open_session()
+        if session_opened:
+            print("Screen unlocked successfully.")
+            return True
+        else:
+            print("Failed to unlock the screen.")
+            return False
+    else:
+        print("Authentication failed.")
+        return False
+
+
 def check_presence():
     mp_face_mesh = mp.solutions.face_mesh
     face_mesh = mp_face_mesh.FaceMesh(min_detection_confidence=0.5, min_tracking_confidence=0.5)
@@ -220,6 +246,7 @@ def check_presence():
     locked = False
     while True:
         ret, frame = cap.read()
+        # time.sleep(5) # usually my machine works in low fps (10-11) thats why waiting 5 second to change frame
         
         if not ret:
             break
@@ -234,20 +261,23 @@ def check_presence():
             last_presence_time = time.time()
             # TODO UNLOCK
             if locked:
+                speak("Welcome back. You need to enter password.")
                 locked = False
-        
+                    
+                
+                
         if time.time() - last_presence_time > PRESENCE_CHECK_INTERVAL and not locked:
             speak("I am locking the machine.")
             time.sleep(1)
-            cmd = subprocess.run(["/usr/bin/xdg-screensaver", "lock"], capture_output=True, text=True)
-            time.sleep(1)
+            # os.popen('gnome-screensaver-command --lock')
+            cmd = subprocess.run(["xdg-screensaver", "lock"])
             if cmd.returncode == 0:
                 logging.basicConfig(filename='/home/emir/Desktop/dev/CogniPass/scripts/logfile.log', level=logging.DEBUG)
                 logging.debug('Script executed successfully.')
                 locked = True
             else:
                 logging.basicConfig(filename='/home/emir/Desktop/dev/CogniPass/scripts/logfile.log', level=logging.DEBUG)
-                logging.debug(f'Script executed usuccessfully.')
+                logging.debug(f'Script executed usuccessfully. {cmd}')
                 locked = False
 
     cap.release()
