@@ -10,10 +10,8 @@ import os
 import pam
 import logging
 import subprocess
-import dbus
 
-SCREEN_LOCK_TIMEOUT = 60
-PRESENCE_CHECK_INTERVAL = 5 
+PRESENCE_CHECK_INTERVAL = 20
 
 os.environ['DISPLAY'] = ':0'
 
@@ -195,21 +193,24 @@ def login_user(silent):
     
 def run_facial(silent):
     if not fc.get_len_db() > 0:
+        # time.sleep(2)
         register_user(silent)
-        time.sleep(1)
         login_user(silent)
     else:
+        # time.sleep(2)
         login_user(silent)
         source_img = fc.get_file('source.jpeg')
         target_img = fc.get_file('target.jpeg')
         if fc.log_in(source_img, target_img):
             if not silent:
-                speak("Hello, Emir")
+                time.sleep(3)
+                speak("Welcome, admin")
             logging.basicConfig(filename='/home/emir/Desktop/dev/CogniPass/scripts/logfile.log', level=logging.DEBUG)
             logging.debug('Script executed successfully.')
             return True
         else:
             if not silent:
+                time.sleep(3)
                 speak("Please get away from this computer.")
             logging.basicConfig(filename='/home/emir/Desktop/dev/CogniPass/scripts/logfile.log', level=logging.DEBUG)
             logging.debug('Script executed successfully.')
@@ -239,6 +240,9 @@ def unlock_screen():
 
 
 def check_presence():
+    """
+        Doesn't lock the screen so transformed into shutdown operation
+    """
     mp_face_mesh = mp.solutions.face_mesh
     face_mesh = mp_face_mesh.FaceMesh(min_detection_confidence=0.5, min_tracking_confidence=0.5)
     cap = cv2.VideoCapture(0)
@@ -257,28 +261,28 @@ def check_presence():
 
         face = face_mesh.process(frame_rgb)
         
-        if face.multi_face_landmarks: # face detected
+        if face.multi_face_landmarks: # face detected due to limitations of service script it deprecated
             last_presence_time = time.time()
             # TODO UNLOCK
             if locked:
                 speak("Welcome back. You need to enter password.")
                 locked = False
-                    
-                
-                
+
         if time.time() - last_presence_time > PRESENCE_CHECK_INTERVAL and not locked:
-            speak("I am locking the machine.")
+            # speak("I am locking the machine.") # Deprecated
             time.sleep(1)
-            # os.popen('gnome-screensaver-command --lock')
-            cmd = subprocess.run(["xdg-screensaver", "lock"])
-            if cmd.returncode == 0:
-                logging.basicConfig(filename='/home/emir/Desktop/dev/CogniPass/scripts/logfile.log', level=logging.DEBUG)
-                logging.debug('Script executed successfully.')
-                locked = True
-            else:
-                logging.basicConfig(filename='/home/emir/Desktop/dev/CogniPass/scripts/logfile.log', level=logging.DEBUG)
-                logging.debug(f'Script executed usuccessfully. {cmd}')
-                locked = False
+            # cmd = subprocess.run(["xdg-screensaver", "lock"]) # Deprecated
+            # if cmd.returncode == 0:
+            #     logging.basicConfig(filename='/home/emir/Desktop/dev/CogniPass/scripts/logfile.log', level=logging.DEBUG)
+            #     logging.debug('Script executed successfully.')
+            #     locked = True
+                
+            # else:
+            #     logging.basicConfig(filename='/home/emir/Desktop/dev/CogniPass/scripts/logfile.log', level=logging.DEBUG)
+            #     logging.debug(f'Script executed usuccessfully. {cmd}')
+            #     locked = False
+            locked = True
+            return True
 
     cap.release()
     cv2.destroyAllWindows()
