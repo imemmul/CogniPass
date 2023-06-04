@@ -7,7 +7,6 @@ import mediapipe as mp
 import numpy as np
 import time
 import os
-import pam
 import logging
 import subprocess
 
@@ -15,7 +14,6 @@ PRESENCE_CHECK_INTERVAL = 20
 
 os.environ['DISPLAY'] = ':0'
 
-# print(f"Env {os.environ}")
 
 def load_csv(csv_file):
     with open(csv_file, 'r') as input:
@@ -271,6 +269,7 @@ def check_presence():
         if time.time() - last_presence_time > PRESENCE_CHECK_INTERVAL and not locked:
             # speak("I am locking the machine.") # Deprecated
             time.sleep(1)
+            # Below code deprecated
             # cmd = subprocess.run(["xdg-screensaver", "lock"]) # Deprecated
             # if cmd.returncode == 0:
             #     logging.basicConfig(filename='/home/emir/Desktop/dev/CogniPass/scripts/logfile.log', level=logging.DEBUG)

@@ -3,7 +3,8 @@ Description=Custom Login Script
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/python3.9 /home/emir/Desktop/dev/CogniPass/src/authentication.py
+ExecStart="PATH TO PYTHON INTERPRETER" "PATH TO PYTHON SCRIPT"
+Environment="PATH TO PYTHON PACKAGES"
 
 [Install]
 WantedBy=default.target
