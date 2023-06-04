@@ -9,6 +9,7 @@ import time
 import os
 import logging
 import subprocess
+import pam
 
 PRESENCE_CHECK_INTERVAL = 20
 
